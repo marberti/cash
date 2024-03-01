@@ -43,8 +43,13 @@ program main
     write(*,'(A)',advance="no") trim(shell_prompt)//shell_prompt_end
     read(input_unit,'(A120)',iostat=err_n,iomsg=err_msg) shell_buff
 !    write(*,*) "(",err_n,": ",trim(shell_buff),")"
-    if (len_trim(shell_buff) == 0) cycle
-    read(shell_buff,*) shell_cmd
+    if (err_n == iostat_end) then
+      write(*,'(A)') "exit"
+      shell_cmd = "exit"
+    else
+      if (len_trim(shell_buff) == 0) cycle
+      read(shell_buff,*) shell_cmd
+    end if
 
     selectcase (trim(shell_cmd))
     case ("ball")
