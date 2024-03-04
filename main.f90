@@ -258,6 +258,12 @@ subroutine write_xyz_ball(shell_buff)
   integer :: err_n
   character(120) :: err_msg
 
+  ! intial check --------------------------------------------------------------
+  if (xyz_center == 0) then
+    write(*,*) "Please select a center first"
+    return
+  end if
+
   ! read ball radius ----------------------------------------------------------
   rad = 0.0
   fname = ""
