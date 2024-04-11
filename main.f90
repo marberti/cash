@@ -12,6 +12,7 @@ program main
   integer :: xyz_center ! center
   real(REAL64), dimension(:), allocatable :: xyz_dist_from_center
   integer, dimension(:), allocatable :: xyz_sorted_by_dist
+  integer :: nuc_in_ball
   ! generic -------------------------------------------------------------------
   character(120) :: pname ! program name
   integer :: i
@@ -31,6 +32,7 @@ program main
   xyz_file = ""
   xyz_a = 0
   xyz_center = 0
+  nuc_in_ball = 0
 
   ! argument parsing ----------------------------------------------------------
   call get_command_argument(0,pname)
@@ -53,7 +55,7 @@ program main
 
     selectcase (trim(shell_cmd))
     case ("ball")
-      call write_xyz_ball(shell_buff)
+      call write_xyz_ball(shell_buff,nuc_in_ball)
     case ("center")
       call set_xyz_center(shell_buff)
     case ("discard")
@@ -244,9 +246,10 @@ end subroutine write_info
 
 !==============================================================================
 
-subroutine write_xyz_ball(shell_buff)
+subroutine write_xyz_ball(shell_buff,nuc_in_ball)
 
   character(*), intent(in) :: shell_buff
+  integer, intent(out) :: nuc_in_ball
   
   integer, parameter :: fnumb = 101
   character(120) :: fname
@@ -293,9 +296,10 @@ subroutine write_xyz_ball(shell_buff)
     counter = counter + 1
   end do
 
+  nuc_in_ball = counter
+
   write(fnumb,*) counter
   write(fnumb,*)
-
   do i = 1, counter
     s = xyz_sorted_by_dist(i)
     write(fnumb,*) xyz_e(s), xyz_c(s,1), xyz_c(s,2), xyz_c(s,3)
