@@ -232,10 +232,10 @@ subroutine list_ball(nuc_in_ball)
     return
   end if
 
-  write(*,*) "  i     n Nuc      x           y           z           dist"
+  write(*,*) "   i      n Nuc      x           y           z           dist"
   do i = 1, nuc_in_ball
     s = xyz_sorted_by_dist(i)
-    write(*,'(I4,": ",I4,X,A2,4(2X,F10.4))') &
+    write(*,'(I5,": ",I5,X,A2,4(2X,F10.4))') &
       i,s,xyz_e(s),xyz_c(s,1),xyz_c(s,2),xyz_c(s,3),xyz_dist_from_center(s)
   end do
 
@@ -253,10 +253,10 @@ subroutine write_sorted_xyz()
     return
   end if
 
-  write(*,*) "  i     n Nuc      x           y           z           dist"
+  write(*,*) "   i      n Nuc      x           y           z           dist"
   do i = 1, xyz_a
     s = xyz_sorted_by_dist(i)
-    write(*,'(I4,": ",I4,X,A2,4(2X,F10.4))') &
+    write(*,'(I5,": ",I5,X,A2,4(2X,F10.4))') &
       i,s,xyz_e(s),xyz_c(s,1),xyz_c(s,2),xyz_c(s,3),xyz_dist_from_center(s)
   end do
 
