@@ -1,7 +1,10 @@
+CC=gcc
 FC=gfortran
 EXE=cash
 
 .PHONY: default
 default:
-	$(FC) -o $(EXE) main.f90
+	$(CC) -c mergeball_kernel.c
+	$(FC) -c main.f90
+	$(FC) -o $(EXE) mergeball_kernel.o main.o
 

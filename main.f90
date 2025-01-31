@@ -2,6 +2,8 @@ program main
 
   use iso_fortran_env
 
+  implicit none
+
   ! Variables =================================================================
   ! xyz -----------------------------------------------------------------------
   logical :: xyz_loaded
@@ -56,6 +58,8 @@ program main
     selectcase (trim(shell_cmd))
     case ("ball")
       call write_xyz_ball(shell_buff,nuc_in_ball)
+    case ("mergeball")
+      call mergeball(shell_buff)
     case ("center")
       call set_xyz_center(shell_buff)
     case ("discard")
@@ -442,6 +446,7 @@ subroutine deallocate_xyz()
 end subroutine deallocate_xyz
 
 !==============================================================================
+
 subroutine write_xyz(fnumb,a,e,c)
 
   integer, intent(in) :: fnumb
@@ -458,5 +463,81 @@ subroutine write_xyz(fnumb,a,e,c)
   end do
 
 end subroutine write_xyz
+
+!==============================================================================
+
+subroutine mergeball(shell_buff)
+
+  use, intrinsic :: iso_c_binding
+
+  interface
+    integer(kind=C_INT) function mergeball_kernel(b1_c,b2_c,f_out_c) bind(C)
+      use, intrinsic :: iso_c_binding
+      character(kind=C_CHAR), dimension(120) :: b1_c
+      character(kind=C_CHAR), dimension(120) :: b2_c
+      character(kind=C_CHAR), dimension(120) :: f_out_c
+    end function mergeball_kernel
+  end interface
+
+  character(*), intent(in) :: shell_buff
+
+  character(120) :: cmd_name
+  character(120) :: b1
+  character(120) :: b2
+  character(120) :: f_out
+  integer :: i
+  integer :: i_max
+  integer :: err_n
+  character(120) :: err_msg
+
+  integer(kind=C_INT) :: stat
+  character(kind=C_CHAR), dimension(120) :: b1_c
+  character(kind=C_CHAR), dimension(120) :: b2_c
+  character(kind=C_CHAR), dimension(120) :: f_out_c
+
+  b1 = ""
+  b2 = ""
+  f_out = ""
+  read(shell_buff,*,iostat=err_n,iomsg=err_msg) cmd_name, b1, b2, f_out
+
+  if (len_trim(b1) == 0) then
+    write(*,*) "usage: "//trim(cmd_name)//" <ball1.xyz> <ball2.xyz> [output.xyz]"
+    return
+  end if
+
+  if (len_trim(b2) == 0) then
+    write(*,*) "usage: "//trim(cmd_name)//" <ball1.xyz> <ball2.xyz> [output.xyz]"
+    return
+  end if
+
+  if (len_trim(f_out) == 0) then
+    f_out = "mergeball.xyz"
+  end if
+
+!  write(*,*) "b1    = "//trim(b1)
+!  write(*,*) "b2    = "//trim(b2)
+!  write(*,*) "f_out = "//trim(f_out)
+
+  i_max = len_trim(b1)
+  do i = 1, i_max
+    b1_c(i) = b1(i:i)
+  end do
+  b1_c(i_max + 1) = C_NULL_CHAR
+
+  i_max = len_trim(b2)
+  do i = 1, i_max
+    b2_c(i) = b2(i:i)
+  end do
+  b2_c(i_max + 1) = C_NULL_CHAR
+
+  i_max = len_trim(f_out)
+  do i = 1, i_max
+    f_out_c(i) = f_out(i:i)
+  end do
+  f_out_c(i_max + 1) = C_NULL_CHAR
+
+  stat = mergeball_kernel(b1_c,b2_c,f_out_c)
+
+end subroutine mergeball
 
 end program main
