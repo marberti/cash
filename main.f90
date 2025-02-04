@@ -122,7 +122,7 @@ subroutine shell_help()
   write(*,*) "  exit, quit                   terminate the program"
   write(*,*) "  read <xyz_file>              read and load in memory the content of xyz_file"
   write(*,*) "  discard                      discard xyz file from memory"
-  write(*,*) "  center                       select center of xyz structure"
+  write(*,*) "  center <n>                   set the n-th atom of the xyz structure as center"
   write(*,*) "  ball <radius> [fname]        write xyz ball of a given radius"
   write(*,*) "  mergeball <b1> <b2> [out]    merge the contents of ball files b1 and b2,"
   write(*,*) "                               writing the unique nuclei in the out file"
