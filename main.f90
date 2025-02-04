@@ -1,6 +1,7 @@
 program main
 
-  use iso_fortran_env
+  use, intrinsic :: iso_fortran_env
+  use solid_volume
 
   implicit none
 
@@ -11,7 +12,11 @@ program main
   integer :: xyz_a ! number of atoms
   character(2), dimension(:), allocatable :: xyz_e   ! elements
   real(REAL64), dimension(:,:), allocatable :: xyz_c ! coordinates
-  integer :: xyz_center ! center
+  integer :: xyz_center ! possible values:
+                        !     0 -> center not set
+                        !    -1 -> arbitrary center set
+                        ! n > 0 -> n-th atom set as center
+  type(point) :: arbitrary_xyz_center
   real(REAL64), dimension(:), allocatable :: xyz_dist_from_center
   integer, dimension(:), allocatable :: xyz_sorted_by_dist
   integer :: nuc_in_ball
@@ -35,6 +40,9 @@ program main
   xyz_a = 0
   xyz_center = 0
   nuc_in_ball = 0
+  arbitrary_xyz_center%x = 0.0_REAL64
+  arbitrary_xyz_center%y = 0.0_REAL64
+  arbitrary_xyz_center%z = 0.0_REAL64
 
   ! argument parsing ----------------------------------------------------------
   call get_command_argument(0,pname)
@@ -62,6 +70,8 @@ program main
       call mergeball(shell_buff)
     case ("center")
       call set_xyz_center(shell_buff)
+    case ("centerxyz")
+      call set_arbitrary_xyz_center(shell_buff,arbitrary_xyz_center)
     case ("discard")
       call discard_xyz(xyz_file,xyz_loaded)
       shell_prompt = "(file:-)"
@@ -123,6 +133,7 @@ subroutine shell_help()
   write(*,*) "  read <xyz_file>              read and load in memory the content of xyz_file"
   write(*,*) "  discard                      discard xyz file from memory"
   write(*,*) "  center <n>                   set the n-th atom of the xyz structure as center"
+  write(*,*) "  centerxyz <x> <y> <z>        set the center on the given x, y, z coordinates"
   write(*,*) "  ball <radius> [fname]        write xyz ball of a given radius"
   write(*,*) "  mergeball <b1> <b2> [out]    merge the contents of ball files b1 and b2,"
   write(*,*) "                               writing the unique nuclei in the out file"
@@ -136,6 +147,14 @@ subroutine shell_help()
   write(*,*)
 
 end subroutine shell_help
+
+!==============================================================================
+
+subroutine polite_reminder()
+
+  write(*,*) "Please check the help for the correct usage of this command"
+
+end subroutine polite_reminder
 
 !==============================================================================
 
@@ -168,11 +187,49 @@ end subroutine set_xyz_center
 
 !==============================================================================
 
+subroutine set_arbitrary_xyz_center(str_in,p)
+
+  character(*), intent(in) :: str_in
+  type(point), intent(out) :: p
+
+  character(120) :: str
+  real(REAL64) :: x
+  real(REAL64) :: y
+  real(REAL64) :: z
+  integer :: err_n
+  character(120) :: err_msg
+
+  if (xyz_loaded.eqv..false.) then
+    write(*,*) "No xyz file loaded"
+    return
+  end if
+
+  read(str_in,*,iostat=err_n,iomsg=err_msg) str, x, y, z
+  if (err_n /= 0) then
+    write(*,*) "Error: "//trim(err_msg)
+    call polite_reminder()
+    xyz_center = 0
+  else
+    p%x = x
+    p%y = y
+    p%z = z
+    xyz_center = -1
+    call sort_xyz_center()
+  end if
+
+end subroutine set_arbitrary_xyz_center
+
+!==============================================================================
+
 subroutine sort_xyz_center()
 
+  character(*), parameter :: my_name = "sort_xyz_center"
   logical, dimension(:), allocatable :: mask
   integer :: i
   integer :: m
+  real(REAL64) :: cx
+  real(REAL64) :: cy
+  real(REAL64) :: cz
   integer :: err_n
   character(120) :: err_msg
 
@@ -203,11 +260,26 @@ subroutine sort_xyz_center()
     stop 1
   end if
 
+  ! set center coordinates ----------------------------------------------------
+  if (xyz_center > 0) then
+    cx = xyz_c(xyz_center,1)
+    cy = xyz_c(xyz_center,2)
+    cz = xyz_c(xyz_center,3)
+  else if (xyz_center == -1) then
+    cx = arbitrary_xyz_center%x
+    cy = arbitrary_xyz_center%y
+    cz = arbitrary_xyz_center%z
+  else
+    write(*,*) "Fatal error: "//my_name//": this shouldn't have happened"
+    write(*,*) "Please send a bug report"
+    stop 1
+  end if
+
   ! compute distances ---------------------------------------------------------
   do i = 1, xyz_a
-    xyz_dist_from_center(i) = sqrt((xyz_c(i,1)-xyz_c(xyz_center,1))**2 + &
-                                   (xyz_c(i,2)-xyz_c(xyz_center,2))**2 + &
-                                   (xyz_c(i,3)-xyz_c(xyz_center,3))**2)
+    xyz_dist_from_center(i) = sqrt((xyz_c(i,1)-cx)**2 + &
+                                   (xyz_c(i,2)-cy)**2 + &
+                                   (xyz_c(i,3)-cz)**2)
   end do
 
   ! sorting -------------------------------------------------------------------
@@ -272,8 +344,21 @@ end subroutine write_sorted_xyz
 
 subroutine write_info()
 
+  character(*), parameter :: my_name = "write_info"
+
   write(*,*) "Nuclei: ",xyz_a
-  write(*,*) "Center: ",xyz_center
+  if (xyz_center == 0) then
+    write(*,*) "Center not set"
+  else if (xyz_center == -1) then
+    write(*,*) "Arbitrary center on: ", &
+      arbitrary_xyz_center%x, arbitrary_xyz_center%y, arbitrary_xyz_center%z
+  else if (xyz_center > 0) then
+    write(*,*) "Center on atom: ",xyz_center
+  else
+    write(*,*) "Fatal error: "//my_name//": this shouldn't have happened"
+    write(*,*) "Please send a bug report"
+    stop 1
+  end if
 
 end subroutine write_info
 
@@ -428,11 +513,14 @@ subroutine deallocate_xyz()
 
   xyz_a = 0
   xyz_center = 0
+  arbitrary_xyz_center%x = 0.0_REAL64
+  arbitrary_xyz_center%y = 0.0_REAL64
+  arbitrary_xyz_center%z = 0.0_REAL64
 
   if (allocated(xyz_e)) then
     deallocate(xyz_e,stat=err_n,errmsg=err_msg)
     if (err_n /= 0) then
-      write(*,*) err_msg
+      write(*,*) "Error: "//trim(err_msg)
       stop 1
     end if
   end if
@@ -440,7 +528,7 @@ subroutine deallocate_xyz()
   if (allocated(xyz_c)) then
     deallocate(xyz_c,stat=err_n,errmsg=err_msg)
     if (err_n /= 0) then
-      write(*,*) err_msg
+      write(*,*) "Error: "//trim(err_msg)
       stop 1
     end if
   end if
