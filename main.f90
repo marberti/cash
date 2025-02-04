@@ -93,7 +93,7 @@ program main
     case ("listball")
       call list_ball(nuc_in_ball)
     case ("listsort")
-      call write_sorted_xyz()
+      call write_sorted_xyz(shell_buff)
     case ("ls")
       call execute_command_line(trim(shell_buff)//" --color=auto")
     case ("molden")
@@ -144,7 +144,8 @@ subroutine shell_help()
   write(*,*) "  list                         list xyz nuclei as they appear in the xyz file"
   write(*,*) "  listball                     list xyz nuclei in the last generated ball"
   write(*,*) "                                 at increasing distance from center"
-  write(*,*) "  listsort                     list xyz nuclei at increasing distance from center"
+  write(*,*) "  listsort [n]                 list xyz nuclei at increasing distance from center;"
+  write(*,*) "                                 if n is present, list only the first n nuclei"
   write(*,*) "  info                         write crystal analysis info"
   write(*,*) "  ls [args]                    list files"
   write(*,*) "  molden [args]                run molden"
@@ -325,9 +326,13 @@ end subroutine list_ball
 
 !==============================================================================
 
-subroutine write_sorted_xyz()
+subroutine write_sorted_xyz(str_in)
 
+  character(*), intent(in) :: str_in
+
+  character(120) :: str
   integer :: i
+  integer :: i_max
   integer :: s
 
   if (xyz_center == 0) then
@@ -335,8 +340,19 @@ subroutine write_sorted_xyz()
     return
   end if
 
+  read(str_in,*,iostat=err_n,iomsg=err_msg) str, i_max
+  if (err_n /= 0) then
+    i_max = xyz_a
+  end if
+
+  if (i_max < 0) then
+    i_max = xyz_a
+  else if (i_max > xyz_a) then
+    i_max = xyz_a
+  end if
+
   write(*,*) "   i      n Nuc      x           y           z           dist"
-  do i = 1, xyz_a
+  do i = 1, i_max
     s = xyz_sorted_by_dist(i)
     write(*,'(I5,": ",I5,X,A2,4(2X,F10.4))') &
       i,s,xyz_e(s),xyz_c(s,1),xyz_c(s,2),xyz_c(s,3),xyz_dist_from_center(s)
