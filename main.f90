@@ -94,6 +94,8 @@ program main
       call list_ball(nuc_in_ball)
     case ("listsort")
       call write_sorted_xyz(shell_buff)
+    case ("volume")
+      call compute_volume(shell_buff)
     case ("ls")
       call execute_command_line(trim(shell_buff)//" --color=auto")
     case ("molden")
@@ -149,6 +151,8 @@ subroutine shell_help()
   write(*,*) "  listsort [n]                 list xyz nuclei at increasing distance from center;"
   write(*,*) "                                 if n is present, list only the first n nuclei"
   write(*,*) "  info                         write crystal analysis info"
+  write(*,*) "  volume <set>                 compute the volume of the solid defined by a set of"
+  write(*,*) "                                 vertices, i.e. a comma-separated list of integers"
   write(*,*) "  ls [args]                    list files"
   write(*,*) "  molden [args]                run molden"
   write(*,*) "  vesta [args]                 run vesta"
@@ -362,6 +366,111 @@ subroutine write_sorted_xyz(str_in)
   end do
 
 end subroutine write_sorted_xyz
+
+!==============================================================================
+
+subroutine compute_volume(shell_buff)
+
+  character(*), intent(in) :: shell_buff
+
+  character(120) :: arg
+  integer :: ai
+  integer :: af
+  integer :: s
+  integer :: i
+  integer :: i_max
+  character(20) :: i_str
+  integer :: commas
+  integer :: comma_i
+  integer, dimension(:), allocatable :: comma_pos
+  type(point), dimension(:), allocatable :: v
+  integer, dimension(:), allocatable :: v_list
+  integer :: v_len
+  real(REAL64) :: volume
+  integer :: err_n
+  character(120) :: err_msg
+
+  arg = shell_buff(8:)
+  arg = adjustl(arg)
+  i_max = len_trim(arg)
+!  write(*,*) "arg = "//trim(arg)
+!  write(*,*) "arg_len = ",i_max
+
+  ! set the vertices ----------------------------------------------------------
+  ! count commas
+  commas = 0
+  do i = 1, i_max
+    if (arg(i:i) == ',') then
+      commas = commas + 1
+    end if
+  end do
+!  write(*,*) "commas = ",commas
+
+  ! save comma positions
+  allocate(comma_pos(commas))
+  comma_i = 1
+  do i = 1, i_max
+    if (arg(i:i) == ',') then
+      comma_pos(comma_i) = i
+      comma_i = comma_i + 1
+    end if
+  end do
+!  write(*,*) "comma_pos = ", comma_pos
+
+  ! set vertices
+  v_len = commas + 1
+  allocate(v(v_len))
+  allocate(v_list(v_len))
+
+  do i = 1, v_len
+    if (i == 1) then
+      ai = 1
+    else
+      ai = comma_pos(i-1) + 1
+    end if
+
+    if (i == v_len) then
+      af = i_max
+    else
+      af = comma_pos(i) - 1
+    end if
+
+    read(arg(ai:af),*,iostat=err_n,iomsg=err_msg) v_list(i)
+  end do
+!  write(*,*) "v_list = ", v_list
+
+  write(*,*) "Selected vertices:"
+  write(*,*) "   i      n Nuc      x           y           z           dist"
+  do i = 1, v_len
+    s = v_list(i)
+    write(*,'(I5,": ",I5,X,A2,4(2X,F10.4))') &
+      i,s,xyz_e(s),xyz_c(s,1),xyz_c(s,2),xyz_c(s,3),xyz_dist_from_center(s)
+    v(i)%x = xyz_c(s,1)
+    v(i)%y = xyz_c(s,2)
+    v(i)%z = xyz_c(s,3)
+!    write(*,*) v(i)%x, v(i)%y, v(i)%z
+  end do
+
+  deallocate(comma_pos)
+  deallocate(v_list)
+
+  ! compute the volume --------------------------------------------------------
+  selectcase (v_len)
+  case (4)
+    volume = triangular_pyramid_volume(v(1),v(2),v(3),v(4))
+    write(*,*) "Triangular pyramid volume = ", volume
+  case (6)
+    volume = octahedron_volume(v(1),v(2),v(3),v(4),v(5),v(6))
+    write(*,*) "Octahedron volume = ", volume
+  case default
+    write(i_str,'(I20)') v_len
+    i_str = adjustl(i_str)
+    write(*,*) "Error: cannot compute volume for "//trim(i_str)//" vertices"
+  end select
+
+  deallocate(v)
+
+end subroutine compute_volume
 
 !==============================================================================
 
