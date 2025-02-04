@@ -98,6 +98,8 @@ program main
       call execute_command_line(trim(shell_buff)//" --color=auto")
     case ("molden")
       call execute_command_line(trim(shell_buff))
+    case ("vesta")
+      call execute_command_line(trim(shell_buff))
     case ("read")
       call read_xyz(trim(shell_buff),xyz_file,xyz_loaded)
       if (len_trim(xyz_file) == 0) then
@@ -149,6 +151,7 @@ subroutine shell_help()
   write(*,*) "  info                         write crystal analysis info"
   write(*,*) "  ls [args]                    list files"
   write(*,*) "  molden [args]                run molden"
+  write(*,*) "  vesta [args]                 run vesta"
   write(*,*)
 
 end subroutine shell_help
