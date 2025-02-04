@@ -100,7 +100,11 @@ program main
       call execute_command_line(trim(shell_buff))
     case ("read")
       call read_xyz(trim(shell_buff),xyz_file,xyz_loaded)
-      shell_prompt = "(file:"//trim(xyz_file)//")"
+      if (len_trim(xyz_file) == 0) then
+        shell_prompt = "(file:-)"
+      else
+        shell_prompt = "(file:"//trim(xyz_file)//")"
+      end if
     case default
       write(*,*) "Invalid shell command: ",trim(shell_cmd)
     end select
@@ -346,7 +350,17 @@ subroutine write_info()
 
   character(*), parameter :: my_name = "write_info"
 
+  ! xyz file info
+  if (xyz_loaded) then
+    write(*,*) "xyz file loaded: "//trim(xyz_file)
+  else
+    write(*,*) "No xyz file loaded"
+  end if
+
+  ! nuclei info
   write(*,*) "Nuclei: ",xyz_a
+
+  ! center info
   if (xyz_center == 0) then
     write(*,*) "Center not set"
   else if (xyz_center == -1) then
@@ -443,50 +457,56 @@ subroutine read_xyz(shell_buff,xyz_file,xyz_loaded)
   integer :: err_n
   character(120) :: err_msg
 
+  if (xyz_loaded) then
+    call discard_xyz(xyz_file,xyz_loaded)
+  end if
+
   read(shell_buff,*,iostat=err_n,iomsg=err_msg) s1, xyz_file
 
   if (len_trim(xyz_file) == 0) then
-    write(*,*) "Please specify a xyz file"
-  else
-    if (xyz_loaded.eqv..true.) call deallocate_xyz()
-
-!    write(*,*) "Opening file: ",xyz_file
-
-    open(unit=fnumb,file=trim(xyz_file),status="old",action="read",&
-         iostat=err_n,iomsg=err_msg)
-    if (err_n /= 0) then
-      write(*,*) err_msg
-    else
-      read(fnumb,*) xyz_a
-      read(fnumb,*)
-
-      allocate(xyz_e(xyz_a),stat=err_n,errmsg=err_msg)
-      if (err_n /= 0) then
-        write(*,*) err_msg
-        stop 1
-      end if
-
-      allocate(xyz_c(xyz_a,3),stat=err_n,errmsg=err_msg)
-      if (err_n /= 0) then
-        write(*,*) err_msg
-        stop 1
-      end if
-
-      do i = 1, xyz_a
-        read(fnumb,*) xyz_e(i), xyz_c(i,1), xyz_c(i,2), xyz_c(i,3)
-      end do
-
-  !    call write_xyz(output_unit,xyz_a,xyz_e,xyz_c)
-
-      close(unit=fnumb,iostat=err_n,iomsg=err_msg)
-      if (err_n /= 0) then
-        write(*,*) err_msg
-        stop 1
-      end if
-      
-      xyz_loaded = .true.
-    end if
+    write(*,*) "Error: specify a xyz file"
+    call polite_reminder()
+    return
   end if
+
+!  write(*,*) "Opening file: ",xyz_file
+
+  open(unit=fnumb,file=trim(xyz_file),status="old",action="read",&
+       iostat=err_n,iomsg=err_msg)
+  if (err_n /= 0) then
+    write(*,*) err_msg
+    xyz_file = ""
+    return
+  end if
+
+  read(fnumb,*) xyz_a
+  read(fnumb,*)
+
+  allocate(xyz_e(xyz_a),stat=err_n,errmsg=err_msg)
+  if (err_n /= 0) then
+    write(*,*) err_msg
+    stop 1
+  end if
+
+  allocate(xyz_c(xyz_a,3),stat=err_n,errmsg=err_msg)
+  if (err_n /= 0) then
+    write(*,*) err_msg
+    stop 1
+  end if
+
+  do i = 1, xyz_a
+    read(fnumb,*) xyz_e(i), xyz_c(i,1), xyz_c(i,2), xyz_c(i,3)
+  end do
+
+!  call write_xyz(output_unit,xyz_a,xyz_e,xyz_c)
+
+  close(unit=fnumb,iostat=err_n,iomsg=err_msg)
+  if (err_n /= 0) then
+    write(*,*) err_msg
+    stop 1
+  end if
+
+  xyz_loaded = .true.
 
 end subroutine read_xyz
 
