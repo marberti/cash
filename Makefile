@@ -8,3 +8,7 @@ default:
 	$(FC) -c main.f90
 	$(FC) -o $(EXE) mergeball_kernel.o main.o
 
+.PHONY: clean
+clean:
+	rm -f *.o *.mod
+
